@@ -1,0 +1,59 @@
+
+///START MODULE {{.Namespace}}
+module {{.Namespace}};
+{{range $inc := .Includes}}
+import {{$inc}};
+{{end}}
+{{range $enum := .Enums}}
+enum {{$enum.Name | sanClassName}} : {{$enum.Type}} (inline {{$enum.Type}} s) {
+{{- range $key, $val := $enum.Set}}
+  {{$key}} = {{$val}},
+{{- end}}
+}
+{{end}}
+{{range $union := .Unions}}
+union {{$union.Name}} {
+{{- range $field := $union.Fields}}
+    {{$field.Type | sanClassName}}{{if $field.IsPointer}}*{{end}} {{$field.Name}};
+{{- end}}
+}
+{{end}}
+{{range $struct := .Structs}}
+distinct {{$struct | sanClassName}} = void*;
+{{end}}
+{{range $cb := .CallbackAliases}}
+def {{$cb.Name}} = fn {{if $cb.Return -}}
+{{- $cb.Return.PrintType -}}
+{{- else -}}
+  void
+{{- end}}({{range $idx, $param := $cb.Params -}}{{if not (eq $idx 0)}}, {{end}}{{$param.PrintType | sanClassName}} {{$param.Name}}{{- end}});
+{{end}}
+{{range $class := .Classes}}
+<* Maps to {{$class.ExternRef}} *>
+distinct {{$class.ClassName | sanClassName}} = void*;
+{{if not (eq $class.Parent "")}}
+fn {{$class.Parent | sanClassName}}* {{$class.ClassName | sanClassName}}.as_{{$class.Parent | moduleToUnderscore}}(&self) => ({{$class.Parent | sanClassName}}*)(self);
+{{end}}
+{{range $method := $class.Methods}}
+<* Maps to {{$method.Name}} *>
+extern fn {{if $method.Return -}}
+{{- $method.Return.PrintType | sanClassName -}}
+{{- else -}}
+  void
+{{- end}} {{$class.ClassName | sanClassName}}.{{$method.Name}}({{if $method.InstanceParam.IsPointer}}&{{end}}self{{range $param := $method.Params -}}, {{$param.PrintType | sanClassName}} {{$param.Name}}{{- end}}) @extern("{{$method.ExternRef}}");
+{{end}}
+{{end}}
+
+{{range $iface := .Interfaces}}
+<* Maps to {{$iface.ExternRef}} *>
+interface {{$iface.InterfaceName}} {
+{{range $method := $iface.Methods}}
+  fn {{if $method.Return -}}
+{{- $method.Return.PrintType | sanClassName -}}
+{{- else -}}
+  void
+{{- end}} {{$method.Name}}({{range $idx, $param := $method.Params -}}{{if not (eq $idx 0)}}, {{end}}{{$param.PrintType | sanClassName}} {{$param.Name}}{{- end}});
+{{end}}
+}
+{{end}}    
+///END MODULE {{.Namespace}}
