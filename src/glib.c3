@@ -130,3 +130,31 @@ struct String {
 }
 
 distinct KeyFile = void*;
+
+enum FileError {
+  EXIST,
+  ISDIR,
+  ACCES,
+  NAMETOOLONG,
+  NOENT,
+  NOTDIR,
+  NXIO,
+  NODEV,
+  ROFS,
+  TXTBSY,
+  FAULT,
+  LOOP,
+  NOSPC,
+  NOMEM,
+  MFILE,
+  NFILE,
+  BADF,
+  INVAL,
+  PIPE,
+  AGAIN,
+  INTR,
+  IO,
+  PERM,
+  NOSYS,
+  FAILED
+}

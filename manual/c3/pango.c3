@@ -1,6 +1,7 @@
 module pango;
 
 import gobject;
+import glib;
 
 distinct Font = void*;
 
@@ -75,4 +76,21 @@ enum WrapMode {
   CHAR,
   WORD_CHAR,
   NONE
+}
+
+struct GlyphString {
+  int num_glyphs;
+  GlyphInfo[] glyphs;
+  int* log_clusters;
+}
+
+struct LayoutLine {
+  Layout* layout;
+  int start_index;
+  int length;
+  glib::SList* runs;
+  bool is_paragraph_start;
+  bool resolved_dir_1;
+  bool resolved_dir_2;
+  bool resolved_dir_3;
 }

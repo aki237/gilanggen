@@ -5,11 +5,10 @@ module {{.Namespace}};
 import {{$inc}};
 {{end}}
 {{range $enum := .Enums}}
-enum {{$enum.Name | sanClassName}} : {{$enum.Type}} (inline {{$enum.Type}} s) {
+distinct {{$enum.Name | sanClassName}} = {{$enum.Type}};
 {{- range $key, $val := $enum.Set}}
-  {{$key}} = {{$val}},
+const {{$enum.Name | sanClassName}} {{$enum.Group}}_{{$key}} = {{$val}};
 {{- end}}
-}
 {{end}}
 {{range $union := .Unions}}
 union {{$union.Name}} {
@@ -31,17 +30,46 @@ def {{$cb.Name}} = fn {{if $cb.Return -}}
 {{range $class := .Classes}}
 <* Maps to {{$class.ExternRef}} *>
 distinct {{$class.ClassName | sanClassName}} = void*;
-{{if not (eq $class.Parent "")}}
+
+// Class to parent cast.
+{{if not (eq $class.Parent "") -}}
 fn {{$class.Parent | sanClassName}}* {{$class.ClassName | sanClassName}}.as_{{$class.Parent | moduleToUnderscore}}(&self) => ({{$class.Parent | sanClassName}}*)(self);
-{{end}}
-{{range $method := $class.Methods}}
-<* Maps to {{$method.Name}} *>
+{{- end}}
+
+// Class Constructors
+{{range $method := $class.Constructors}}
+<* Maps to {{$method.Name}} of {{$class.ClassName}} *>
 extern fn {{if $method.Return -}}
 {{- $method.Return.PrintType | sanClassName -}}
 {{- else -}}
   void
-{{- end}} {{$class.ClassName | sanClassName}}.{{$method.Name}}({{if $method.InstanceParam.IsPointer}}&{{end}}self{{range $param := $method.Params -}}, {{$param.PrintType | sanClassName}} {{$param.Name}}{{- end}}) @extern("{{$method.ExternRef}}");
+{{- end}} {{$class.ClassName | snake}}_{{$method.Name}}({{range $idx, $param := $method.Params -}}{{if not (eq $idx 0)}}, {{end}}{{$param.PrintType | sanClassName}} {{$param.Name}}{{- end}}) @extern("{{$method.ExternRef}}");
 {{end}}
+
+
+// Class Methods
+{{range $method := $class.Methods}}
+<* Maps to {{$class.ClassName}}::{{$method.Name}} *>
+extern fn {{if $method.Return -}}
+{{- $method.Return.PrintType | sanClassName -}}
+{{- else -}}
+  void
+{{- end}} {{$class.ClassName | sanClassName}}.{{$method.Name}}(
+  {{- if $method.InstanceParam -}}
+    {{- if $method.InstanceParam.IsPointer -}}&{{end}}self{{", "}}
+  {{- end}}{{range $idx, $param := $method.Params -}}{{if not (eq $idx 0)}}, {{end}}{{$param.PrintType | sanClassName}} {{$param.Name}}{{- end}}) @extern("{{$method.ExternRef}}");
+{{end}}
+
+// Class Functions
+{{range $method := $class.Functions}}
+<* Maps to {{$method.Name}} of {{$class.ClassName}} *>
+extern fn {{if $method.Return -}}
+{{- $method.Return.PrintType | sanClassName -}}
+{{- else -}}
+  void
+{{- end}} {{$class.ClassName | snake}}_{{$method.Name}}({{range $idx, $param := $method.Params -}}{{if not (eq $idx 0)}}, {{end}}{{$param.PrintType | sanClassName}} {{$param.Name}}{{- end}}) @extern("{{$method.ExternRef}}");
+{{end}}
+
 {{end}}
 
 {{range $iface := .Interfaces}}
@@ -55,5 +83,13 @@ interface {{$iface.InterfaceName}} {
 {{- end}} {{$method.Name}}({{range $idx, $param := $method.Params -}}{{if not (eq $idx 0)}}, {{end}}{{$param.PrintType | sanClassName}} {{$param.Name}}{{- end}});
 {{end}}
 }
-{{end}}    
+{{end}}
+{{range $fn := .Functions}}
+<* Maps to {{$fn.Name}} *>
+extern fn {{if $fn.Return -}}
+{{- $fn.Return.PrintType | sanClassName -}}
+{{- else -}}
+  void
+{{- end}} {{$fn.Name}}({{range $idx, $param := $fn.Params -}}{{if not (eq $idx 0)}}, {{end}}{{$param.PrintType | sanClassName}} {{$param.Name}}{{- end}}) @extern("{{$fn.ExternRef}}");
+{{end}}
 ///END MODULE {{.Namespace}}

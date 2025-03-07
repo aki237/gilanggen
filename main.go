@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"flag"
+	"io"
 	"log/slog"
 	"os"
 	"strconv"
@@ -44,10 +45,12 @@ type Method struct {
 }
 
 type Class struct {
-	ClassName string
-	Parent    string
-	ExternRef string
-	Methods   []*Method
+	ClassName    string
+	Parent       string
+	ExternRef    string
+	Methods      []*Method
+	Constructors []*Method
+	Functions    []*Method
 }
 
 type Interface struct {
@@ -64,9 +67,10 @@ type CallbackAlias struct {
 }
 
 type Enum struct {
-	Name string
-	Type string
-	Set  map[string]int64
+	Name  string
+	Group string
+	Type  string
+	Set   map[string]int64
 }
 
 type Union struct {
@@ -84,6 +88,7 @@ type Module struct {
 	Structs         []string
 	Unions          []Union
 	Includes        []string
+	Functions       []*Method
 }
 
 type Namespace string
@@ -91,15 +96,16 @@ type Namespace string
 var bindingTemplate string
 
 func outputClasses(includes []string, namespace string, ns *xmldom.Node) {
+	nsk := Namespace(namespace)
+
 	outVar := Module{
 		Namespace:       namespace,
 		Aliases:         aliases,
 		Classes:         []Class{},
 		CallbackAliases: []CallbackAlias{},
 		Includes:        includes,
+		Functions:       nsk.collectToplevelFunctions(ns, "function"),
 	}
-
-	nsk := Namespace(namespace)
 
 	for _, class := range ns.FindByName("class") {
 		className := class.GetAttributeValue("name")
@@ -111,10 +117,12 @@ func outputClasses(includes []string, namespace string, ns *xmldom.Node) {
 		}
 
 		outVar.Classes = append(outVar.Classes, Class{
-			ClassName: className,
-			ExternRef: cType,
-			Parent:    convertExternalIdent(parent),
-			Methods:   nsk.collectMethods(className, class),
+			ClassName:    className,
+			ExternRef:    cType,
+			Parent:       convertExternalIdent(parent),
+			Methods:      nsk.collectMethods(className, class, "method"),
+			Functions:    nsk.collectMethods(className, class, "function"),
+			Constructors: nsk.collectMethods(className, class, "constructor"),
 		})
 
 		visitedClasses[namespace+"::"+className] = true
@@ -131,7 +139,7 @@ func outputClasses(includes []string, namespace string, ns *xmldom.Node) {
 		outVar.Interfaces = append(outVar.Interfaces, Interface{
 			InterfaceName: ifaceName,
 			ExternRef:     cType,
-			Methods:       nsk.collectMethods(ifaceName, iface),
+			Methods:       nsk.collectMethods(ifaceName, iface, "method"),
 		})
 
 		visitedClasses[namespace+"::"+ifaceName] = true
@@ -193,9 +201,10 @@ func outputClasses(includes []string, namespace string, ns *xmldom.Node) {
 		}
 
 		outVar.Enums = append(outVar.Enums, Enum{
-			Name: enumName,
-			Set:  enumValMap,
-			Type: enumType,
+			Name:  enumName,
+			Group: strcase.ToScreamingSnake(enumName),
+			Set:   enumValMap,
+			Type:  enumType,
 		})
 
 		visitedClasses[namespace+"::"+enumName] = true
@@ -214,6 +223,9 @@ func outputClasses(includes []string, namespace string, ns *xmldom.Node) {
 			}
 
 			return in
+		},
+		"snake": func(in string) string {
+			return strcase.ToSnake(in)
 		},
 	}
 
@@ -341,7 +353,7 @@ func main() {
 		analyzeGObjectIntrospection(doc, additionalImports)
 	}
 
-	out := json.NewEncoder(os.Stderr)
+	out := json.NewEncoder(io.Discard)
 	out.SetIndent("", "  ")
 
 	unvisitedClasses := map[string]bool{}

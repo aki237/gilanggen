@@ -38,19 +38,6 @@ func (ns Namespace) getType(typeNode *xmldom.Node) (string, string, bool) {
 	return aliasedClass, aliasedType, isPointer
 }
 
-func nameNormalize(name string) string {
-	switch name {
-	case "def":
-		return "defaultValue"
-	case "foreach":
-		return "for_each"
-	case "module":
-		return "_module"
-	default:
-		return name
-	}
-}
-
 func (ns Namespace) getParam(param *xmldom.Node) *Param {
 	if param == nil {
 		return nil
@@ -90,11 +77,15 @@ func (ns Namespace) collectMethod(className string, method *xmldom.Node) *Method
 	externRef := method.GetAttributeValue("identifier")
 	paramsNode := method.FindOneByName("parameters")
 
-	instanceParam := ns.getParam(paramsNode.FindOneByName("instance-parameter"))
 	params := make([]*Param, 0)
-	for _, param := range paramsNode.FindByName("parameter") {
-		params = append(params, ns.getParam(param))
+	var instanceParam *Param = nil
+	if paramsNode != nil {
+		for _, param := range paramsNode.FindByName("parameter") {
+			params = append(params, ns.getParam(param))
+		}
+		instanceParam = ns.getParam(paramsNode.FindOneByName("instance-parameter"))
 	}
+
 	returnVal := ns.getParam(method.FindOneByName("return-value"))
 
 	return &Method{
@@ -106,10 +97,28 @@ func (ns Namespace) collectMethod(className string, method *xmldom.Node) *Method
 	}
 }
 
-func (ns Namespace) collectMethods(className string, class *xmldom.Node) []*Method {
+func (ns Namespace) collectMethods(className string, class *xmldom.Node, tag string) []*Method {
+	functions := class.FindByName(tag)
 	methods := make([]*Method, 0)
-	for _, method := range class.FindByName("method") {
+	for _, method := range functions {
 		m := ns.collectMethod(className, method)
+		if m != nil {
+			methods = append(methods, m)
+		}
+	}
+
+	return methods
+}
+
+func (ns Namespace) collectToplevelFunctions(nsk *xmldom.Node, tag string) []*Method {
+	functions := nsk.FindByName(tag)
+	methods := make([]*Method, 0)
+	for _, method := range functions {
+		if method.Parent != nsk {
+			continue
+		}
+
+		m := ns.collectMethod("global", method)
 		if m != nil {
 			methods = append(methods, m)
 		}

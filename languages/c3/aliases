@@ -37,5 +37,7 @@
     "GLAPI":"Glapi",
     "pid_t": "int",
     "uid_t": "int",
-    "va_list": "ZString"
+    "va_list": "ZString",
+    "SignalCMarshaller":"ClosureMarshal",
+    "SignalCVaMarshaller":"VaClosureMarshal"
 }
