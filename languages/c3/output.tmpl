@@ -5,7 +5,7 @@ module {{.Namespace}};
 import {{$inc}};
 {{end}}
 {{range $enum := .Enums}}
-distinct {{$enum.Name | sanClassName}} = {{$enum.Type}};
+typedef {{$enum.Name | sanClassName}} = {{$enum.Type}};
 {{- range $key, $val := $enum.Set}}
 const {{$enum.Name | sanClassName}} {{$enum.Group}}_{{$key}} = {{$val}};
 {{- end}}
@@ -18,10 +18,10 @@ union {{$union.Name}} {
 }
 {{end}}
 {{range $struct := .Structs}}
-distinct {{$struct | sanClassName}} = void*;
+typedef {{$struct | sanClassName}} = void*;
 {{end}}
 {{range $cb := .CallbackAliases}}
-def {{$cb.Name}} = fn {{if $cb.Return -}}
+alias {{$cb.Name}} = fn {{if $cb.Return -}}
 {{- $cb.Return.PrintType -}}
 {{- else -}}
   void
@@ -29,7 +29,7 @@ def {{$cb.Name}} = fn {{if $cb.Return -}}
 {{end}}
 {{range $class := .Classes}}
 <* Maps to {{$class.ExternRef}} *>
-distinct {{$class.ClassName | sanClassName}} = void*;
+typedef {{$class.ClassName | sanClassName}} = void*;
 
 // Class to parent cast.
 {{if not (eq $class.Parent "") -}}
